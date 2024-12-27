@@ -1,7 +1,11 @@
 import json
-from getpass import getpass
 import uuid
 import bcrypt
+import base64
+from getpass import getpass
+from cryptography.fernet import Fernet
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
 # modules
 def get_db():
@@ -20,7 +24,7 @@ def auth_user(email, pwd):
   users = db['users']
   user = None
   for u in users:
-    if email == u['email'] and pwd == bcrypt.checkpw(str.encode(pwd), str.encode(u['password'])):
+    if email == u['email'] and bcrypt.checkpw(pwd.encode('utf-8'), u['password'].encode('utf-8')):
       user = u
   return user
 
@@ -35,30 +39,85 @@ def user_exists(email):
 
 def create_user(email, pwd):
   salt = bcrypt.gensalt()
-  hashed = bcrypt.hashpw(str.encode(pwd), salt)
+  hashed = bcrypt.hashpw(pwd.encode('utf-8'), salt)
   user = {
     'id': str(uuid.uuid4()),
     'email': email,
-    'password': str(hashed)
+    'password': hashed.decode('utf-8'),
+    'salt': salt.decode('utf-8')
   }
   db = get_db()
   users = db['users']
   users.append(user)
   db['users'] = users
   write_db(db)
-  return None
+  return user
+
+def get_safe_key(password, salt):
+  kdf = PBKDF2HMAC(
+    algorithm=hashes.SHA256(),
+    length=32,
+    salt=salt.encode('utf-8'),
+    iterations=100000
+  )
+  key = base64.urlsafe_b64encode(kdf.derive(password.encode('utf-8')))
+  return key
+
+def write_safe(user_id, data, password, salt):
+  key = get_safe_key(password, salt)
+  cipher_suite = Fernet(key)
+  encrypted_data = cipher_suite.encrypt(json.dumps(data).encode('utf-8'))
+  safe = {
+    'user_id': user_id,
+    'data': encrypted_data.decode('utf-8')
+  }
+  db = get_db()
+  safes = db['safes']
+  index = None
+  # get index of existing safe
+  for i, s in enumerate(safes):
+    if s.get('user_id') == user_id:
+      index = i
+      break
+  # add safe if not found, replace safe if found
+  if index == None:
+    safes.append(safe)
+  else:
+    safes[index] = safe
+  db['safes'] = safes
+  write_db(db)
+  return safe
+
+def open_safe(user_id, password, salt):
+  print('## Opening safe.')
+  db = get_db()
+  safes = db['safes']
+  safe = None
+  for s in safes:
+    if s.get('user_id') == user_id:
+      safe = s
+      break
+  if safe == None:
+    safe = write_safe(user_id, {}, password, salt)
+  key = get_safe_key(password, salt)
+  cipher_suite = Fernet(key)
+  decrypted_bytes = cipher_suite.decrypt(safe['data'])
+  data = json.loads(decrypted_bytes.decode('utf-8'))
+  return data
 
 # app
 def login():
   print('# Login')
   email = input('Enter your email: ')
-  pwd = getpass('Enter your password: ')
+  pwd = getpass('Enter your master password: ')
   user = auth_user(email, pwd)
   if user == None:
     print('## Invalid credentials.')
     login()
   else:
     print('## Logged in successfully.')
+    data = open_safe(user['id'], pwd, user['salt'])
+    print(data)
   return None
 
 def create_account():
@@ -70,8 +129,9 @@ def create_account():
   if user_exists(email) == True:
     print('## Email already exists.')
     create_account()
-  pwd = getpass('Enter your password: ')
-  create_user(email, pwd)
+  pwd = getpass('Enter your master password: ')
+  user = create_user(email, pwd)
+  write_safe(user['id'], {}, pwd, user['salt'])
   return None
 
 # main

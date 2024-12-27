@@ -1,4 +1,20 @@
 {
-  "users": [{ "id": "d9e50169-6198-48cd-8174-485e8ebea194", "email": "user1@test.com", "password": "b'$2b$12$Le6YiG81HxW0pt3rFShrh.zu4IK4JXQ1DSvZkQ2zTcXmwtZqI/gvG'" }],
-  "safes": []
+  "users": [
+    {
+      "id": "f9a1f759-364b-4686-8c51-045f9e0471f3",
+      "email": "user1@test.com",
+      "password": "$2b$12$J7vvIF1y.OudvrgCQOpBJ.yw4OrzQGp5E6vpA425nd9RlGOHEROwa",
+      "salt": "$2b$12$J7vvIF1y.OudvrgCQOpBJ."
+    },
+    {
+      "id": "72c78723-5ef6-493f-a003-dc9a689de2e5",
+      "email": "user2@test.com",
+      "password": "$2b$12$N7lgeZ1WEl0aiEyJSZnh1OcvQa1Z/iLJnWUDDNflzulO56xNde3h2",
+      "salt": "$2b$12$N7lgeZ1WEl0aiEyJSZnh1O"
+    }
+  ],
+  "safes": [
+    { "user_id": "f9a1f759-364b-4686-8c51-045f9e0471f3", "data": "gAAAAABnbuBCQHCoWgoNVi_618ChXRkWrGZYaAYYyXCHi3uSpcm-Y_gn7kuEM4V7wrS7zmGryWuLdaetK8WDrZXh0HWOcOMyGQ==" },
+    { "user_id": "72c78723-5ef6-493f-a003-dc9a689de2e5", "data": "gAAAAABnbuMZQpyP5827rzd_QKIWuhY73v3RY7X_ZAdU2_0qMvYEKDsrCRsb77d8aIiAMwtcqvR5kMzL_vdtHSQA5Bba5BOefQ==" }
+  ]
 }
