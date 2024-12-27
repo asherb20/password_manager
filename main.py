@@ -89,7 +89,6 @@ def write_safe(user_id, data, password, salt):
   return safe
 
 def open_safe(user_id, password, salt):
-  print('## Opening safe.')
   db = get_db()
   safes = db['safes']
   safe = None
@@ -106,6 +105,61 @@ def open_safe(user_id, password, salt):
   return data
 
 # app
+def user_safe_screen(user_id, password, salt, data = None):
+  if data == None:
+    data = open_safe(user_id, password, salt)
+  stored_passwords = data.get('passwords')
+  if stored_passwords == None:
+    stored_passwords = []
+  changes_made = False
+
+  print('## Enter "1" to create a password.')
+  print('## Enter "2" to read a password.')
+  print('## Enter "3" to update a password.')
+  print('## Enter "4" to delete a password.')
+  print('## Enter "5" to save and logout.')
+  i = input('Input an option and press enter: ')
+
+  if i == '1':
+    print('## Create password')
+    stored_password = {
+      'name': input('Unique name: '),
+      'url': input('URL: '),
+      'username': input('Username: '),
+      'password': input('Password: ')
+    }
+    stored_passwords.append(stored_password)
+    changes_made = True
+  elif i == '2':
+    print('## Read password')
+    print('## Your stored passwords:')
+    for sp in stored_passwords:
+      print(f"> Name: {sp['name']}, Username: {sp['username']}")
+    name = input('Input the name of the password you want to read: ')
+    for sp in stored_passwords:
+      if sp.get('name') == name:
+        print(f"> Name: {sp['name']}")
+        print(f"> URL: {sp['url']}")
+        print(f"> Username: {sp['username']}")
+        print(f"> Password: {sp['password']}")
+        break
+  elif i == '3':
+    print('## Update password')
+    changes_made = True
+  elif i == '4':
+    print('## Delete password')
+    changes_made = True
+  elif i == '5':
+    print('## Saving and logging out')
+    data['passwords'] = stored_passwords
+    if changes_made == True:
+      write_safe(user_id, data, password, salt)
+    return None
+  else:
+    print('## Invalid option')
+  
+  return user_safe_screen(user_id, password, salt, data)
+
 def login():
   print('# Login')
   email = input('Enter your email: ')
@@ -116,8 +170,7 @@ def login():
     login()
   else:
     print('## Logged in successfully.')
-    data = open_safe(user['id'], pwd, user['salt'])
-    print(data)
+    user_safe_screen(user['id'], pwd, user['salt'])
   return None
 
 def create_account():
@@ -152,6 +205,6 @@ def main():
     print('# Reset password')
   else:
     print('# Invalid input')
-  exit()
+  main()
 
 main()
