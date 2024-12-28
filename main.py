@@ -3,10 +3,15 @@ import uuid
 import bcrypt
 import base64
 import secrets
+import tkinter
 from getpass import getpass
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+
+state = {
+  'user': None
+}
 
 # modules
 def get_db():
@@ -20,13 +25,15 @@ def write_db(data):
     f.write(json.dumps(data))
     f.close()
 
-def auth_user(email, pwd):
+def auth_user(email, password):
   db = get_db()
   users = db['users']
   user = None
   for u in users:
-    if email == u['email'] and bcrypt.checkpw(pwd.encode('utf-8'), u['password'].encode('utf-8')):
+    if email == u['email'] and bcrypt.checkpw(password.encode('utf-8'), u['password'].encode('utf-8')):
       user = u
+      state['user'] = u
+      break
   return user
 
 def user_exists(email):
@@ -235,23 +242,39 @@ def create_account_screen():
   return None
 
 # main
-def main():
-  print('# Welcome to password manager!')
-  print('## Enter "1" to log into your safe.')
-  print('## Enter "2" to create a new account.')
-  print('## Enter "3" to reset your password.')
+gui = tkinter.Tk()
+gui.title('Password Manager')
 
-  i = input('Input an option and press enter: ')
+tkinter.Label(gui, text='Welcome to Password Manager!').grid(row=0, columnspan=2)
+tkinter.Label(gui, text='Email').grid(row=1)
+tkinter.Label(gui, text='Master Password').grid(row=2)
+email_entry = tkinter.Entry(gui)
+email_entry.grid(row=1, column=1)
+password_entry = tkinter.Entry(gui)
+password_entry.grid(row=2, column=1)
+unlock_btn = tkinter.Button(gui, text='Unlock Safe', width=25, command=lambda: auth_user(email_entry.get(), password_entry.get()))
+unlock_btn.grid(row=3, columnspan=2)
+create_account_btn = tkinter.Button(gui, text='Create Account', width=25, command=create_account_screen).grid(row=4, columnspan=2)
 
-  if i == '1':
-    login_screen()
-  elif i == '2':
-    create_account_screen()
-    login_screen()
-  elif i == '3':
-    print('# Reset password')
-  else:
-    print('# Invalid input')
-  main()
+gui.mainloop()
 
-main()
+# def main():
+  # print('# Welcome to password manager!')
+  # print('## Enter "1" to log into your safe.')
+  # print('## Enter "2" to create a new account.')
+  # print('## Enter "3" to reset your password.')
+
+  # i = input('Input an option and press enter: ')
+
+  # if i == '1':
+  #   login_screen()
+  # elif i == '2':
+  #   create_account_screen()
+  #   login_screen()
+  # elif i == '3':
+  #   print('# Reset password')
+  # else:
+  #   print('# Invalid input')
+  # main()
+
+# main()

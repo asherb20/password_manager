@@ -14,6 +14,9 @@
 - [x] Data management (store site, username, password securely; encrypt/decrypt data on save and retrieve)
 - [x] Password generator
 - [ ] Graphical user interface
+  - [ ] Login screen
+  - [ ] User safe screen
+  - [ ] Password CRUD screen
 - [ ] Search/filter for stored credentials
 - [ ] Export/import credentials securely
 - [ ] AWS S3 integration
