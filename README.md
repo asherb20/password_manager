@@ -11,8 +11,9 @@
 ## Roadmap
 
 - [x] User authentication (create account, master password, unlock safe)
-- [ ] Data management (store site, username, password securely; encrypt/decrypt data on save and retrieve)
-- [ ] Password generator
-- [ ] User interface
+- [x] Data management (store site, username, password securely; encrypt/decrypt data on save and retrieve)
+- [x] Password generator
+- [ ] Graphical user interface
 - [ ] Search/filter for stored credentials
 - [ ] Export/import credentials securely
+- [ ] AWS S3 integration

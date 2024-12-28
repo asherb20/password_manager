@@ -2,6 +2,7 @@ import json
 import uuid
 import bcrypt
 import base64
+import secrets
 from getpass import getpass
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
@@ -35,6 +36,7 @@ def user_exists(email):
   for u in users:
     if email == u['email']:
       user_exists = True
+      break
   return user_exists
 
 def create_user(email, pwd):
@@ -104,6 +106,18 @@ def open_safe(user_id, password, salt):
   data = json.loads(decrypted_bytes.decode('utf-8'))
   return data
 
+def generate_password():
+  password_length = input('Input the desired password length (defaults to 12 if left blank): ')
+  try:
+    if password_length == None or password_length == '':
+      password_length = 12
+    else:
+      password_length = int(password_length)
+  except ValueError:
+    print('!! Value must be an integer.')
+    return generate_password()
+  return secrets.token_urlsafe(password_length)
+
 # app
 def user_safe_screen(user_id, password, salt, data = None):
   if data == None:
@@ -111,7 +125,10 @@ def user_safe_screen(user_id, password, salt, data = None):
   stored_passwords = data.get('passwords')
   if stored_passwords == None:
     stored_passwords = []
-  changes_made = False
+
+  print('## Your stored passwords:')
+  for sp in stored_passwords:
+    print(f"> Name: {sp['name']}, Username: {sp['username']}")
 
   print('## Enter "1" to create a password.')
   print('## Enter "2" to read a password.')
@@ -125,16 +142,14 @@ def user_safe_screen(user_id, password, salt, data = None):
     stored_password = {
       'name': input('Unique name: '),
       'url': input('URL: '),
-      'username': input('Username: '),
-      'password': input('Password: ')
+      'username': input('Username: ')
     }
+    new_password = input('Password (enter "gen" to generate a strong password): ')
+    if new_password == 'gen':
+      stored_password['password'] = generate_password()
     stored_passwords.append(stored_password)
-    changes_made = True
   elif i == '2':
     print('## Read password')
-    print('## Your stored passwords:')
-    for sp in stored_passwords:
-      print(f"> Name: {sp['name']}, Username: {sp['username']}")
     name = input('Input the name of the password you want to read: ')
     for sp in stored_passwords:
       if sp.get('name') == name:
@@ -145,43 +160,75 @@ def user_safe_screen(user_id, password, salt, data = None):
         break
   elif i == '3':
     print('## Update password')
-    changes_made = True
+    name = input('Input the name of the password you want to update: ')
+    for i, sp in enumerate(stored_passwords):
+      if sp.get('name') == name:
+        updated_stored_password = sp
+
+        updated_name = input(f"Update Name (current: {sp.get('name')} [enter nothing to leave as-is]): ")
+        if updated_name != None and updated_name != '':
+          updated_stored_password['name'] = updated_name    
+
+        updated_url = input(f"Update URL (current: {sp.get('url')} [enter nothing to leave as-is]): ")
+        if updated_url != None and updated_url != '':
+          updated_stored_password['url'] = updated_url 
+        
+        updated_username = input(f"Update Username (current: {sp.get('username')} [enter nothing to leave as-is]): ")
+        if updated_username != None and updated_username != '':
+          updated_stored_password['username'] = updated_username
+        
+        updated_password = input(f"Update Password (current: {sp.get('password')} [enter \"gen\" to generate a strong password or enter nothing to leave as-is]): ")
+        if updated_password != None and updated_password != '':
+          if updated_password == 'gen':
+            updated_stored_password['password'] = generate_password()
+          else:
+            updated_stored_password['password'] = updated_password
+
+        stored_passwords[i] = updated_stored_password
+
+        print('## Password updated.')
+
+        break
   elif i == '4':
     print('## Delete password')
-    changes_made = True
+    name = input('Input the name of the password you want to update: ')
+    for i, sp in enumerate(stored_passwords):
+      if sp.get('name') == name:
+        stored_passwords.pop(i)
+        print('## Password deleted.')
+        break
   elif i == '5':
     print('## Saving and logging out')
     data['passwords'] = stored_passwords
-    if changes_made == True:
-      write_safe(user_id, data, password, salt)
+    write_safe(user_id, data, password, salt)
     return None
   else:
     print('## Invalid option')
   
   return user_safe_screen(user_id, password, salt, data)
 
-def login():
+def login_screen():
   print('# Login')
   email = input('Enter your email: ')
   pwd = getpass('Enter your master password: ')
   user = auth_user(email, pwd)
   if user == None:
     print('## Invalid credentials.')
-    login()
+    login_screen()
   else:
     print('## Logged in successfully.')
     user_safe_screen(user['id'], pwd, user['salt'])
   return None
 
-def create_account():
+def create_account_screen():
   print('# Create account')
   email = input('Enter your email: ')
   if email == None or email == '':
     print('## Email cannot be blank.')
-    create_account()
+    create_account_screen()
   if user_exists(email) == True:
     print('## Email already exists.')
-    create_account()
+    create_account_screen()
   pwd = getpass('Enter your master password: ')
   user = create_user(email, pwd)
   write_safe(user['id'], {}, pwd, user['salt'])
@@ -197,10 +244,10 @@ def main():
   i = input('Input an option and press enter: ')
 
   if i == '1':
-    login()
+    login_screen()
   elif i == '2':
-    create_account()
-    login()
+    create_account_screen()
+    login_screen()
   elif i == '3':
     print('# Reset password')
   else:
