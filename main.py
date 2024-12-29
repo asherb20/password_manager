@@ -4,14 +4,11 @@ import bcrypt
 import base64
 import secrets
 import tkinter
+from tkinter import messagebox
 from getpass import getpass
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-
-state = {
-  'user': None
-}
 
 # modules
 def get_db():
@@ -24,17 +21,6 @@ def write_db(data):
   with open('db.json', 'w') as f:
     f.write(json.dumps(data))
     f.close()
-
-def auth_user(email, password):
-  db = get_db()
-  users = db['users']
-  user = None
-  for u in users:
-    if email == u['email'] and bcrypt.checkpw(password.encode('utf-8'), u['password'].encode('utf-8')):
-      user = u
-      state['user'] = u
-      break
-  return user
 
 def user_exists(email):
   db = get_db()
@@ -125,7 +111,7 @@ def generate_password():
     return generate_password()
   return secrets.token_urlsafe(password_length)
 
-# app
+# app 1.0
 def user_safe_screen(user_id, password, salt, data = None):
   if data == None:
     data = open_safe(user_id, password, salt)
@@ -241,40 +227,103 @@ def create_account_screen():
   write_safe(user['id'], {}, pwd, user['salt'])
   return None
 
-# main
-gui = tkinter.Tk()
-gui.title('Password Manager')
+# modules 2.0
+def open_safe(user_id, password, salt):
+  db = get_db()
+  safes = db['safes']
+  safe = None
+  for s in safes:
+    if s.get('user_id') == user_id:
+      safe = s
+      break
+  if safe == None:
+    safe = write_safe(user_id, {}, password, salt)
+  key = get_safe_key(password, salt)
+  cipher_suite = Fernet(key)
+  decrypted_bytes = cipher_suite.decrypt(safe['data'])
+  data = json.loads(decrypted_bytes.decode('utf-8'))
+  return data
 
-tkinter.Label(gui, text='Welcome to Password Manager!').grid(row=0, columnspan=2)
-tkinter.Label(gui, text='Email').grid(row=1)
-tkinter.Label(gui, text='Master Password').grid(row=2)
-email_entry = tkinter.Entry(gui)
-email_entry.grid(row=1, column=1)
-password_entry = tkinter.Entry(gui)
-password_entry.grid(row=2, column=1)
-unlock_btn = tkinter.Button(gui, text='Unlock Safe', width=25, command=lambda: auth_user(email_entry.get(), password_entry.get()))
-unlock_btn.grid(row=3, columnspan=2)
-create_account_btn = tkinter.Button(gui, text='Create Account', width=25, command=create_account_screen).grid(row=4, columnspan=2)
+def open_user_safe_window(user, password):
+  us_root = tkinter.Tk()
+  us_root.title('User Safe')
 
-gui.mainloop()
+  us_root_frame = tkinter.Frame(us_root)
+  us_root_frame.grid(pady=8, padx=8)
 
-# def main():
-  # print('# Welcome to password manager!')
-  # print('## Enter "1" to log into your safe.')
-  # print('## Enter "2" to create a new account.')
-  # print('## Enter "3" to reset your password.')
+  welcome_label = tkinter.Label(us_root_frame, text=f"Welcome, {user.get('email')}!", padx=4, pady=4)
+  welcome_label.grid()
 
-  # i = input('Input an option and press enter: ')
+  safe = open_safe(user['id'], password, user['salt'])
+  stored_passwords = [] if safe.get('passwords') == None else safe.get('passwords')
 
-  # if i == '1':
-  #   login_screen()
-  # elif i == '2':
-  #   create_account_screen()
-  #   login_screen()
-  # elif i == '3':
-  #   print('# Reset password')
-  # else:
-  #   print('# Invalid input')
-  # main()
+  sps_frame = tkinter.Frame(us_root_frame)
+  sps_frame.grid(padx=8, pady=8)
+  for stored_password in stored_passwords:
+    sp_frame = tkinter.Frame(sps_frame, bd=1, relief='solid')
+    sp_frame.grid(padx=4, pady=4)
+    sp_name_label = tkinter.Label(sp_frame, text=f"{stored_password.get('name')}", anchor='w', width=25, font=('Arial', 10, 'bold'))
+    sp_name_label.grid(column=0, row=0)
+    sp_uname_label = tkinter.Label(sp_frame, text=f"{stored_password.get('username')}", anchor='w', width=25)
+    sp_uname_label.grid(column=0, row=1)
+    sp_btn_props = [
+      {'text':'🔑','column':1},
+      {'text':'✏️','column':2},
+      {'text':'🗑️','column':3},
+    ]
+    for prop in sp_btn_props:
+      sp_view_btn = tkinter.Button(sp_frame, text=prop['text'], width=5, anchor='center')
+      sp_view_btn.grid(column=prop['column'], row=0, rowspan=2)
+  
+  footer_frame = tkinter.Frame(us_root_frame, padx=4, pady=4)
+  footer_frame.grid()
+  create_pwd_btn = tkinter.Button(footer_frame, text='➕ Create Password', padx=4, pady=4)
+  create_pwd_btn.grid(column=0, row=0, sticky='w')
+  logout_btn = tkinter.Button(footer_frame, text='↩️ Logout', padx=4, pady=4)
+  logout_btn.grid(column=1, row=0, sticky='e')
 
-# main()
+  return None
+
+def auth_user(email, password):
+  db = get_db()
+  users = db['users']
+  user = None
+  for u in users:
+    if email == u['email'] and bcrypt.checkpw(password.encode('utf-8'), u['password'].encode('utf-8')):
+      user = u
+      break
+  if user == None:
+    messagebox.showerror('Invalid credentials', 'The credentials you entered are invalid')
+  else:
+    root.destroy()
+    open_user_safe_window(user, password)
+  return user
+
+# main 2.0
+root = tkinter.Tk()
+root.title('Password Manager')
+
+root_frame = tkinter.Frame(root)
+root_frame.pack(pady=8, padx=8)
+root_label = tkinter.Label(root_frame, text='Welcome to Password Manager!')
+root_label.pack()
+
+entries_frame = tkinter.Frame(root_frame)
+entries_frame.pack(padx=8, pady=8)
+email_label = tkinter.Label(entries_frame, text='Email', width=22, anchor='w')
+email_label.pack()
+email_entry = tkinter.Entry(entries_frame, width=25)
+email_entry.pack()
+password_label = tkinter.Label(entries_frame, text='Master Password', width=22, anchor='w')
+password_label.pack()
+password_entry = tkinter.Entry(entries_frame, width=25, show="*")
+password_entry.pack()
+
+btns_frame = tkinter.Frame(root_frame)
+btns_frame.pack(padx=8, pady=8)
+unlock_btn = tkinter.Button(btns_frame, text='Unlock Safe', width=21, command=lambda: auth_user(email_entry.get(), password_entry.get()))
+unlock_btn.pack()
+create_account_btn = tkinter.Button(btns_frame, text='Create Account', width=21)
+create_account_btn.pack()
+
+root.mainloop()
