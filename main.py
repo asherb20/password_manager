@@ -4,6 +4,7 @@ import bcrypt
 import base64
 import secrets
 import tkinter
+import pyperclip
 from tkinter import messagebox
 from getpass import getpass
 from cryptography.fernet import Fernet
@@ -11,17 +12,6 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
 # modules
-def get_db():
-  with open('db.json', 'r') as f:
-    db = json.loads(f.read())
-    f.close()
-    return db
-  
-def write_db(data):
-  with open('db.json', 'w') as f:
-    f.write(json.dumps(data))
-    f.close()
-
 def user_exists(email):
   db = get_db()
   users = db['users']
@@ -47,41 +37,6 @@ def create_user(email, pwd):
   db['users'] = users
   write_db(db)
   return user
-
-def get_safe_key(password, salt):
-  kdf = PBKDF2HMAC(
-    algorithm=hashes.SHA256(),
-    length=32,
-    salt=salt.encode('utf-8'),
-    iterations=100000
-  )
-  key = base64.urlsafe_b64encode(kdf.derive(password.encode('utf-8')))
-  return key
-
-def write_safe(user_id, data, password, salt):
-  key = get_safe_key(password, salt)
-  cipher_suite = Fernet(key)
-  encrypted_data = cipher_suite.encrypt(json.dumps(data).encode('utf-8'))
-  safe = {
-    'user_id': user_id,
-    'data': encrypted_data.decode('utf-8')
-  }
-  db = get_db()
-  safes = db['safes']
-  index = None
-  # get index of existing safe
-  for i, s in enumerate(safes):
-    if s.get('user_id') == user_id:
-      index = i
-      break
-  # add safe if not found, replace safe if found
-  if index == None:
-    safes.append(safe)
-  else:
-    safes[index] = safe
-  db['safes'] = safes
-  write_db(db)
-  return safe
 
 def open_safe(user_id, password, salt):
   db = get_db()
@@ -228,6 +183,52 @@ def create_account_screen():
   return None
 
 # modules 2.0
+def get_db():
+  with open('db.json', 'r') as f:
+    db = json.loads(f.read())
+    f.close()
+    return db
+  
+def write_db(data):
+  with open('db.json', 'w') as f:
+    f.write(json.dumps(data))
+    f.close()
+
+def get_safe_key(password, salt):
+  kdf = PBKDF2HMAC(
+    algorithm=hashes.SHA256(),
+    length=32,
+    salt=salt.encode('utf-8'),
+    iterations=100000
+  )
+  key = base64.urlsafe_b64encode(kdf.derive(password.encode('utf-8')))
+  return key
+
+def write_safe(user_id, data, password, salt):
+  key = get_safe_key(password, salt)
+  cipher_suite = Fernet(key)
+  encrypted_data = cipher_suite.encrypt(json.dumps(data).encode('utf-8'))
+  safe = {
+    'user_id': user_id,
+    'data': encrypted_data.decode('utf-8')
+  }
+  db = get_db()
+  safes = db['safes']
+  index = None
+  # get index of existing safe
+  for i, s in enumerate(safes):
+    if s.get('user_id') == user_id:
+      index = i
+      break
+  # add safe if not found, replace safe if found
+  if index == None:
+    safes.append(safe)
+  else:
+    safes[index] = safe
+  db['safes'] = safes
+  write_db(db)
+  return safe
+
 def open_safe(user_id, password, salt):
   db = get_db()
   safes = db['safes']
@@ -243,6 +244,64 @@ def open_safe(user_id, password, salt):
   decrypted_bytes = cipher_suite.decrypt(safe['data'])
   data = json.loads(decrypted_bytes.decode('utf-8'))
   return data
+
+def copy_password(value):
+  pyperclip.copy(value)
+
+def save_password(sp):
+  print('edited sp: ', sp)
+  return None
+
+def edit_password(sp, safe):
+  # create new window
+  ep_root = tkinter.Tk()
+  ep_root.title('Edit Password')
+  ep_root_frame = tkinter.Frame(ep_root)
+  ep_root_frame.pack(pady=8, padx=8)
+  ep_root_label = tkinter.Label(ep_root_frame, text='Edit Password')
+  ep_root_label.pack()
+
+  print('initial sp: ', sp)
+  sp_edit = sp
+
+  # variable callback
+  def on_change(var_name, *args):
+    print('on change var name: ', var_name)
+    print('on change value: ', sp_edit[var_name].get())
+    sp_edit[var_name] = sp_edit[var_name].get()
+
+  # create entries and populate values
+  entries_frame = tkinter.Frame(ep_root_frame)
+  entries_frame.pack(padx=8, pady=8)
+  entry_props = [
+    {'name':'name','text':'Name','value':sp.get('name'),'show':''},
+    {'name':'url','text':'URL','value':sp.get('url'),'show':''},
+    {'name':'username','text':'Username','value':sp.get('username'),'show':''},
+    {'name':'password','text':'Password','value':sp.get('password'),'show':'*'}
+  ]
+  for prop in entry_props:
+    label = tkinter.Label(entries_frame, text=prop['text'], width=22, anchor='w')
+    label.pack()
+    var_name = prop['name']
+    sp_edit[var_name] = tkinter.StringVar()
+    sp_edit[var_name].trace_add('write', lambda *args, v=var_name: on_change(v, *args))
+    entry = tkinter.Entry(entries_frame, width=25, show=prop['show'], textvariable=sp_edit[var_name])
+    entry.insert(0, prop['value'])
+    sp_edit[var_name].set(prop['value'])
+    entry.pack()
+
+  # add buttons
+  btns_frame = tkinter.Frame(ep_root_frame)
+  btns_frame.pack(padx=8, pady=8)
+  save_btn = tkinter.Button(btns_frame, text='Save and Close', width=21, command=lambda: save_password(sp_edit))
+  save_btn.pack()
+
+  print('after edit sp:', sp_edit)
+
+  return None
+
+def delete_password():
+  return None
 
 def open_user_safe_window(user, password):
   us_root = tkinter.Tk()
@@ -267,12 +326,12 @@ def open_user_safe_window(user, password):
     sp_uname_label = tkinter.Label(sp_frame, text=f"{stored_password.get('username')}", anchor='w', width=25)
     sp_uname_label.grid(column=0, row=1)
     sp_btn_props = [
-      {'text':'🔑','column':1},
-      {'text':'✏️','column':2},
-      {'text':'🗑️','column':3},
+      {'text':'🔑','column':1, 'command': lambda: copy_password(stored_password.get('password'))},
+      {'text':'✏️','column':2, 'command': lambda: edit_password(stored_password, safe)},
+      {'text':'🗑️','column':3, 'command': lambda: delete_password()},
     ]
     for prop in sp_btn_props:
-      sp_view_btn = tkinter.Button(sp_frame, text=prop['text'], width=5, anchor='center')
+      sp_view_btn = tkinter.Button(sp_frame, text=prop['text'], width=5, anchor='center', command=prop['command'])
       sp_view_btn.grid(column=prop['column'], row=0, rowspan=2)
   
   footer_frame = tkinter.Frame(us_root_frame, padx=4, pady=4)
