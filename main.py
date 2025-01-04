@@ -248,55 +248,52 @@ def open_safe(user_id, password, salt):
 def copy_password(value):
   pyperclip.copy(value)
 
-def save_password(sp):
-  print('edited sp: ', sp)
-  return None
-
-def edit_password(sp, safe):
+def edit_password(root, sp, safe):
   # create new window
-  ep_root = tkinter.Tk()
+  ep_root = tkinter.Toplevel(root)
   ep_root.title('Edit Password')
   ep_root_frame = tkinter.Frame(ep_root)
   ep_root_frame.pack(pady=8, padx=8)
   ep_root_label = tkinter.Label(ep_root_frame, text='Edit Password')
   ep_root_label.pack()
 
-  print('initial sp: ', sp)
   sp_edit = sp
 
   # variable callback
-  def on_change(var_name, *args):
-    print('on change var name: ', var_name)
-    print('on change value: ', sp_edit[var_name].get())
-    sp_edit[var_name] = sp_edit[var_name].get()
+  def on_change(*args):
+    return None
+
+  def save_password():
+    sp_update = {key: value.get() for key, value in sp_edit.items()}
+    print('Final value to save:', sp_update)
+    ep_root.destroy()
 
   # create entries and populate values
   entries_frame = tkinter.Frame(ep_root_frame)
   entries_frame.pack(padx=8, pady=8)
+
   entry_props = [
-    {'name':'name','text':'Name','value':sp.get('name'),'show':''},
-    {'name':'url','text':'URL','value':sp.get('url'),'show':''},
-    {'name':'username','text':'Username','value':sp.get('username'),'show':''},
-    {'name':'password','text':'Password','value':sp.get('password'),'show':'*'}
+    {'text': 'Name', 'var_name': 'name', 'show': ''},
+    {'text': 'URL', 'var_name': 'url', 'show': ''},
+    {'text': 'Username', 'var_name': 'username', 'show': ''},
+    {'text': 'Password', 'var_name': 'password', 'show': '*'}
   ]
-  for prop in entry_props:
-    label = tkinter.Label(entries_frame, text=prop['text'], width=22, anchor='w')
-    label.pack()
-    var_name = prop['name']
-    sp_edit[var_name] = tkinter.StringVar()
-    sp_edit[var_name].trace_add('write', lambda *args, v=var_name: on_change(v, *args))
-    entry = tkinter.Entry(entries_frame, width=25, show=prop['show'], textvariable=sp_edit[var_name])
-    entry.insert(0, prop['value'])
-    sp_edit[var_name].set(prop['value'])
-    entry.pack()
+  for entry_prop in entry_props:
+    name_label = tkinter.Label(entries_frame, text=entry_prop['text'], width=22, anchor='w')
+    name_label.pack()
+    var_name = entry_prop['var_name']
+    sp_edit[var_name] = tkinter.StringVar(value=sp.get(var_name))
+    sp_edit[var_name].trace_add('write', on_change)
+    name_entry = tkinter.Entry(entries_frame, width=25, show=entry_prop['show'], textvariable=sp_edit[var_name])
+    name_entry.pack()
 
   # add buttons
   btns_frame = tkinter.Frame(ep_root_frame)
   btns_frame.pack(padx=8, pady=8)
-  save_btn = tkinter.Button(btns_frame, text='Save and Close', width=21, command=lambda: save_password(sp_edit))
+  save_btn = tkinter.Button(btns_frame, text='Save and Close', width=21, command=save_password)
   save_btn.pack()
 
-  print('after edit sp:', sp_edit)
+  ep_root.mainloop()
 
   return None
 
@@ -327,7 +324,7 @@ def open_user_safe_window(user, password):
     sp_uname_label.grid(column=0, row=1)
     sp_btn_props = [
       {'text':'🔑','column':1, 'command': lambda: copy_password(stored_password.get('password'))},
-      {'text':'✏️','column':2, 'command': lambda: edit_password(stored_password, safe)},
+      {'text':'✏️','column':2, 'command': lambda: edit_password(us_root, stored_password, safe)},
       {'text':'🗑️','column':3, 'command': lambda: delete_password()},
     ]
     for prop in sp_btn_props:
