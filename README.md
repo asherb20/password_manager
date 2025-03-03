@@ -10,12 +10,12 @@
 
 ## Roadmap
 
-- [x] User authentication (create account, master password, unlock safe)
-- [x] Data management (store site, username, password securely; encrypt/decrypt data on save and retrieve)
-- [x] Password generator
+- [ ] User authentication (create account, master password, unlock safe)
+- [ ] Data management (store site, username, password securely; encrypt/decrypt data on save and retrieve)
+- [ ] Password generator
 - [ ] Graphical user interface
-  - [x] Login screen
-  - [x] User safe screen
+  - [ ] Login screen
+  - [ ] User safe screen
   - [ ] Password CRUD screen
   - [ ] Create account screen
 - [ ] Search/filter for stored credentials
